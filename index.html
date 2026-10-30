@@ -232,6 +232,12 @@ img{max-width:100%}
 .check{flex-direction:row!important;align-items:center;gap:8px!important;text-transform:none!important;letter-spacing:0!important;font-size:13px!important;font-weight:600!important;color:var(--fg)!important}
 .check input{width:18px!important;height:18px!important;padding:0!important;-webkit-appearance:checkbox!important;appearance:auto!important}
 .pwshow{font-family:var(--f-mono);font-size:14px}
+.catpick{display:flex;flex-direction:column;gap:8px}
+.cplbl{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.cpbox{display:flex;flex-wrap:wrap;gap:8px}
+.form label.cpitem{flex-direction:row;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:0 16px;height:44px;font-size:13.5px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--fg);background:var(--surface);cursor:pointer}
+.form label.cpitem:has(input:checked){background:var(--blue-soft);border-color:var(--blue)}
+.dlg input[type=checkbox]{display:inline-block;width:18px;height:18px;padding:0;margin:0;flex:none;-webkit-appearance:checkbox;appearance:auto;accent-color:var(--blue);box-shadow:none}
 </style>
 
 <header class="top">
@@ -299,7 +305,7 @@ const IDLE_MIN=60;
 let sb=null,me=null,isAdmin=false,screen='cargando',loginMsg='';
 let team=[],tasks=[],tasksLoaded=false,chan=null,reloadT=null;
 let F={cat:'Todos',q:'',stat:null,persona:''};
-let openId=null,mode=null,showAllDone=false,busy=false,bajaId=null,pwdId=null,lastAct=Date.now();
+let openId=null,mode=null,showAllDone=false,busy=false,bajaId=null,pwdId=null,editId=null,lastAct=Date.now();
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -323,6 +329,10 @@ const memberName=id=>{if(me&&id===me.id)return isAdmin?'Bernardo San Pedro (tú)
 const authorName=n=>n.autorNombre||(n.autor==='sistema'?'Sistema':'—');
 const personaOk=t=>!isAdmin||F.persona===''||(F.persona==='__yo'?t.responsable===me.id:t.responsable===F.persona);
 const openOf=list=>list.filter(t=>t.estatus!=='hecho').length;
+/* Categorías que puede usar cada persona (Bernardo: todas) */
+const catsFor=id=>{const m=(!isAdmin&&me&&id===me.id)?me:memberById(id);if(!m||m.rol==='Administrador'||!(m.categorias||[]).length)return CATS;return CATS.filter(c=>m.categorias.includes(c))};
+const catPicker=(pref,sel)=>`<div class="cpbox" id="${pref}_cats">${CATS.map((c,i)=>`<label class="cpitem"><input type="checkbox" id="${pref}c_${i}" value="${esc(c)}" ${sel.includes(c)?'checked':''}> ${esc(c)}</label>`).join('')}</div>`;
+const pickedCats=pref=>[...document.querySelectorAll('#'+pref+'_cats input:checked')].map(i=>i.value);
 
 /* ---------- Datos ---------- */
 const fromRow=r=>({id:r.id,titulo:r.titulo,categoria:r.categoria,prioridad:r.prioridad,fechaLimite:r.fecha_limite||'',recurrencia:r.recurrencia||'',detalle:r.detalle||'',estatus:r.estatus,responsable:r.responsable,creada:r.creada,creadaPor:r.creada_por,terminadaEn:r.terminada_en||'',siguienteCreada:r.siguiente_creada,pago:r.pago||{},documentos:r.documentos||[],evidencias:r.evidencias||[],notas:r.notas||[]});
@@ -389,7 +399,7 @@ function render(){
     $('#filters').innerHTML=`<div id="chips" style="display:flex;flex-wrap:wrap;gap:8px"></div><div class="search"><input id="q" type="text" placeholder="Buscar actividad…" aria-label="Buscar"></div><span id="af"></span>`;
     $('#q').addEventListener('input',e=>{F.q=e.target.value;renderBoard()});
   }
-  $('#chips').innerHTML=['Todos',...CATS].map(c=>`<button class="chip ${F.cat===c?'on':''}" data-cat="${c}">${c}</button>`).join('');
+  $('#chips').innerHTML=['Todos',...(isAdmin?CATS:catsFor(me.id))].map(c=>`<button class="chip ${F.cat===c?'on':''}" data-cat="${c}">${c}</button>`).join('');
   $('#af').innerHTML=F.stat?`<span class="active-filter">Filtro: ${esc(sd.find(s=>s.k===F.stat).l)} <button class="linkbtn" data-clear>Quitar</button></span>`:'';
   renderBoard();
 }
@@ -528,7 +538,9 @@ function drawDialog(){
 function formHTML(t){
   t=t||{};const p=t.pago||{};
   const respDef=t.id?t.responsable:(isAdmin&&F.persona&&F.persona!=='__yo'&&(memberById(F.persona)||{}).activo?F.persona:me.id);
-  const catDef=t.categoria||ROLE_CAT[isAdmin?(memberById(respDef)||{}).rol:me.rol]||'Personal';
+  const base=catsFor(isAdmin?respDef:me.id);const copts=base.concat(t.categoria&&!base.includes(t.categoria)?[t.categoria]:[]);
+  const rolR=isAdmin?(memberById(respDef)||{}).rol:me.rol;
+  const catDef=t.categoria||(copts.includes(ROLE_CAT[rolR])?ROLE_CAT[rolR]:copts[0]);
   const act=activeStaff();
   const respField=isAdmin?`<label class="full">Responsable<select id="f_resp"><option value="${esc(me.id)}">Bernardo San Pedro · CEO (yo)</option>${act.map(m=>`<option value="${esc(m.id)}" ${m.id===respDef?'selected':''}>${esc(m.nombre)} · ${esc(m.rol)}</option>`).join('')}${t.responsable&&t.responsable!==me.id&&!act.some(m=>m.id===t.responsable)?`<option value="${esc(t.responsable)}" selected>${esc(memberName(t.responsable))} (baja)</option>`:''}</select></label>`:'';
   return`<form id="frm" novalidate>
@@ -536,7 +548,7 @@ function formHTML(t){
   <div class="dlg-body"><div class="form">
     <label class="full">Qué hay que hacer<input id="f_titulo" type="text" value="${esc(t.titulo||'')}" placeholder="Ej. Pagar recibo de luz de la casa" required></label>
     ${respField}
-    <label>Categoría<select id="f_cat">${CATS.map(c=>`<option ${c===catDef?'selected':''}>${c}</option>`).join('')}</select></label>
+    <label>Categoría<select id="f_cat">${copts.map(c=>`<option ${c===catDef?'selected':''}>${c}</option>`).join('')}</select></label>
     <label>Prioridad<select id="f_pri">${['Normal','Urgente'].map(c=>`<option ${c===(t.prioridad||'Normal')?'selected':''}>${c}</option>`).join('')}</select></label>
     <label>Fecha límite<input id="f_fecha" type="date" value="${esc(t.fechaLimite||'')}"></label>
     <label>Se repite<select id="f_rec">${Object.entries(REC).map(([k,v])=>`<option value="${k}" ${k===(t.recurrencia||'')?'selected':''}>${v}</option>`).join('')}</select></label>
@@ -564,6 +576,7 @@ function teamHTML(){
      <label>Correo electrónico<input id="t_correo" type="email" placeholder="correo@ejemplo.com" autocomplete="off" inputmode="email"></label>
      <label>Rol<select id="t_rol">${ROLES.map(r=>`<option>${r}</option>`).join('')}</select></label>
      <label>Contraseña temporal<input id="t_pwd" class="pwshow" type="text" autocomplete="off" value="${genPwd()}"></label>
+     <div class="full catpick"><span class="cplbl">Categorías a las que tendrá acceso (una o varias)</span>${catPicker('t',[ROLE_CAT['Asistente']||'Personal'])}</div>
      <div class="full" style="display:flex;justify-content:flex-end"><button type="submit" class="btn btn-primary">Dar de alta</button></div>
      <div class="err full" id="teamErr"></div>
     </form>
@@ -576,10 +589,12 @@ function teamHTML(){
   <div class="dlg-foot"><button class="btn btn-primary" data-close>Listo</button></div>`;
 }
 function memberHTML(m){
-  const on=m.activo,n=openOf(tasks.filter(t=>t.responsable===m.id)),conf=bajaId===m.id,pw=pwdId===m.id;
+  const on=m.activo,n=openOf(tasks.filter(t=>t.responsable===m.id)),conf=bajaId===m.id,pw=pwdId===m.id,ed=editId===m.id;
   const others=activeStaff().filter(x=>x.id!==m.id);
-  return`<div class="member"><div class="mh"><strong>${esc(m.nombre)}</strong><span class="pill ${on?'on':'off'}">${on?'Activo':'Baja'}</span><span class="tag">${esc(m.rol)}</span><span class="sp">${on&&!conf&&!pw?`<button class="btn btn-ghost btn-sm" data-pwd="${esc(m.id)}">Contraseña</button><button class="btn btn-danger btn-sm" data-baja="${esc(m.id)}">Dar de baja</button>`:''}${on?'':`<button class="btn btn-ghost btn-sm" data-reac="${esc(m.id)}">Reactivar</button>`}</span></div>
+  return`<div class="member"><div class="mh"><strong>${esc(m.nombre)}</strong><span class="pill ${on?'on':'off'}">${on?'Activo':'Baja'}</span><span class="tag">${esc(m.rol)}</span><span class="sp">${on&&!conf&&!pw&&!ed?`<button class="btn btn-ghost btn-sm" data-editm="${esc(m.id)}">Editar</button><button class="btn btn-ghost btn-sm" data-pwd="${esc(m.id)}">Contraseña</button><button class="btn btn-danger btn-sm" data-baja="${esc(m.id)}">Dar de baja</button>`:''}${on?'':`<button class="btn btn-ghost btn-sm" data-reac="${esc(m.id)}">Reactivar</button>`}</span></div>
   <small><span class="mono">${esc(m.correo)}</span> · Alta ${esc(fmtTS(m.alta))}${!on&&m.baja?' · Baja '+esc(fmtTS(m.baja)):''} · ${m.debe_cambiar?'Aún no crea su contraseña':'Ya creó su contraseña'} · ${n} pendiente${n===1?'':'s'} abierto${n===1?'':'s'}</small>
+  <small>Acceso a: <b>${esc((m.categorias||[]).join(' · ')||'todas las categorías')}</b></small>
+  ${ed?`<div class="hint"><b>Editar a ${esc(m.nombre)}</b><div class="form" style="margin-top:10px"><label class="full">Rol<select id="e_rol">${ROLES.map(r=>`<option ${r===m.rol?'selected':''}>${r}</option>`).join('')}</select></label><div class="full catpick"><span class="cplbl">Categorías a las que tiene acceso</span>${catPicker('e',m.categorias||[])}</div></div><div class="err" id="eErr"></div><div class="inline" style="margin-top:10px"><button class="btn btn-ghost btn-sm" data-canceditm>Cancelar</button><button class="btn btn-primary btn-sm" data-saveeditm="${esc(m.id)}">Guardar cambios</button></div></div>`:''}
   ${conf?`<div class="hint"><b>¿Dar de baja a ${esc(m.nombre)}?</b> Pierde el acceso en ese momento y su historial se conserva.${n?`<div class="inline" style="margin-top:8px"><select id="reasig" aria-label="Qué hacer con sus pendientes abiertos"><option value="">Pasar sus ${n} pendiente${n===1?'':'s'} abierto${n===1?'':'s'} a mí (Bernardo)</option>${others.map(x=>`<option value="${esc(x.id)}">Reasignarlos a ${esc(x.nombre)}</option>`).join('')}</select></div>`:''}<div class="inline" style="margin-top:10px"><button class="btn btn-ghost btn-sm" data-cancbaja>Cancelar</button><button class="btn btn-danger btn-sm" data-bajayes="${esc(m.id)}">Sí, dar de baja</button></div></div>`:''}
   ${pw?`<div class="hint"><b>Contraseña de ${esc(m.nombre)}</b><div style="margin-top:4px">Entrará con <span class="mono">${esc(m.correo)}</span> y esta contraseña.</div><div class="form" style="margin-top:10px"><label class="full">Contraseña nueva<input id="p_nueva" class="pwshow" type="text" autocomplete="off" value="${genPwd()}"></label><label class="check full"><input id="p_temp" type="checkbox" checked> Pedirle que cree la suya al entrar</label></div><div class="err" id="pErr"></div><div class="inline" style="margin-top:10px"><button class="btn btn-ghost btn-sm" data-cancpwd>Cancelar</button><button class="btn btn-primary btn-sm" data-savepwd="${esc(m.id)}">Guardar contraseña</button></div></div>`:''}
   </div>`;
@@ -667,16 +682,22 @@ async function delTask(){const t=cur();await guard(async()=>{const{error}=await 
 
 async function addMember(e){
   e.preventDefault();
-  const nombre=$('#t_nombre').value.trim(),correo=$('#t_correo').value.trim().toLowerCase(),rol=$('#t_rol').value,password=$('#t_pwd').value.trim();
+  const nombre=$('#t_nombre').value.trim(),correo=$('#t_correo').value.trim().toLowerCase(),rol=$('#t_rol').value,password=$('#t_pwd').value.trim(),categorias=pickedCats('t');
   const err=$('#teamErr');err.textContent='';
   if(!nombre){err.textContent='Escribe el nombre.';return}
   if(!EMAIL_RE.test(correo)){err.textContent='Revisa el correo electrónico.';return}
   if(password.length<8){err.textContent='La contraseña temporal debe tener al menos 8 caracteres.';return}
+  if(!categorias.length){err.textContent='Elige al menos una categoría.';return}
   await guard(async()=>{
-    try{await adminFn({accion:'crear',nombre,correo,rol,password})}catch(x){err.textContent=x.message;return}
+    try{await adminFn({accion:'crear',nombre,correo,rol,password,categorias})}catch(x){err.textContent=x.message;return}
     await reload();drawDialog();
     toast(nombre+' dado de alta. Dale su correo y la contraseña '+password+'.');
   });
+}
+async function saveEdit(id){
+  const m=memberById(id);const rol=$('#e_rol').value;const categorias=pickedCats('e');const err=$('#eErr');
+  if(!categorias.length){err.textContent='Elige al menos una categoría.';return}
+  await guard(async()=>{try{await adminFn({accion:'editar',id,rol,categorias})}catch(x){err.textContent=x.message;return}editId=null;await reload();drawDialog();toast('Cambios guardados para '+m.nombre)});
 }
 async function savePwd(id){
   const m=memberById(id);const password=$('#p_nueva').value.trim();const temporal=$('#p_temp').checked;const err=$('#pErr');
@@ -736,11 +757,14 @@ document.addEventListener('click',e=>{
   else if(d.del!==undefined){$('#foot').innerHTML=`<span class="confirm">¿Eliminar esta actividad para siempre?</span><button class="btn btn-ghost" data-cancdel>No</button><button class="btn btn-danger" data-delyes>Sí, eliminar</button>`}
   else if(d.cancdel!==undefined){drawDialog()}
   else if(d.delyes!==undefined){delTask()}
-  else if(d.baja){bajaId=d.baja;pwdId=null;drawDialog()}
+  else if(d.baja){bajaId=d.baja;pwdId=null;editId=null;drawDialog()}
   else if(d.cancbaja!==undefined){bajaId=null;drawDialog()}
   else if(d.bajayes){doBaja(d.bajayes)}
   else if(d.reac){reactivate(d.reac)}
-  else if(d.pwd){pwdId=d.pwd;bajaId=null;drawDialog()}
+  else if(d.pwd){pwdId=d.pwd;bajaId=null;editId=null;drawDialog()}
+  else if(d.editm){editId=d.editm;bajaId=null;pwdId=null;drawDialog()}
+  else if(d.canceditm!==undefined){editId=null;drawDialog()}
+  else if(d.saveeditm){saveEdit(d.saveeditm)}
   else if(d.cancpwd!==undefined){pwdId=null;drawDialog()}
   else if(d.savepwd){savePwd(d.savepwd)}
   else if(d.logout!==undefined){logout()}
@@ -753,8 +777,9 @@ $('#btnOut').addEventListener('click',()=>logout('Sesión cerrada.'));
 document.addEventListener('submit',e=>{const id=e.target.id;
   if(id==='frm')submitForm(e);else if(id==='teamFrm')addMember(e);else if(id==='loginFrm')doLogin(e);
   else if(id==='newPwdFrm')saveOwnPwd(e,false);else if(id==='chgPwdFrm')saveOwnPwd(e,true)});
-document.addEventListener('change',e=>{if(e.target.id==='f_resp'&&mode==='new'){const m=memberById(e.target.value);const c=$('#f_cat');if(c)c.value=(m&&ROLE_CAT[m.rol])||'Personal';return}const k=e.target.dataset&&e.target.dataset.upl;if(k){upload(k,[...e.target.files]);e.target.value=''}});
-$('#dlg').addEventListener('close',()=>{openId=null;mode=null;bajaId=null;pwdId=null});
+document.addEventListener('change',e=>{if(e.target.id==='f_resp'){const id=e.target.value,m=memberById(id),c=$('#f_cat');if(c){const keep=c.value,opts=catsFor(id);c.innerHTML=opts.map(x=>`<option>${esc(x)}</option>`).join('');c.value=(mode==='edit'&&opts.includes(keep))?keep:((m&&opts.includes(ROLE_CAT[m.rol]))?ROLE_CAT[m.rol]:opts[0])}return}
+  if(e.target.id==='t_rol'){const d=ROLE_CAT[e.target.value]||'Personal';document.querySelectorAll('#t_cats input').forEach(i=>i.checked=i.value===d);return}const k=e.target.dataset&&e.target.dataset.upl;if(k){upload(k,[...e.target.files]);e.target.value=''}});
+$('#dlg').addEventListener('close',()=>{openId=null;mode=null;bajaId=null;pwdId=null;editId=null});
 $('#dlg').addEventListener('click',e=>{if(e.target===$('#dlg'))closeDlg()});
 
 /* Redibuja el panel abierto sin perder lo que se está escribiendo */

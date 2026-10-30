@@ -1,0 +1,780 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#081a3a">
+<title>Mesa · Iron One Capital</title>
+<link rel="icon" type="image/png" href="assets/icono-192.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-title" content="Mesa">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+
+/* Layout: encabezado navy + franja de indicadores + tablero de 4 columnas por estatus (se apila en pantallas angostas); detalle en panel modal */
+:root{
+  --navy:#081a3a; --blue:#0d3ffa; --bg:#f3f5fa; --surface:#ffffff; --fg:#0f1a33; --muted:#5d6782; --line:#dde2ee; --soft:#eef1f8;
+  --st-pendiente:#5d6782; --st-proceso:#0d3ffa; --st-espera:#c27a00; --st-hecho:#1a8a4f;
+  --danger:#c62f3a; --danger-soft:#fde9eb; --warn-soft:#fff3dc; --ok-soft:#e5f5ec; --blue-soft:#e6ecff;
+  --head-fg:#ffffff; --head-muted:#a9b6d6;
+  --f-ui:"Montserrat",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --navy:#061230; --blue:#5b7cff; --bg:#0b1020; --surface:#141b2e; --fg:#e6eaf5; --muted:#99a3bf; --line:#263050; --soft:#1b2440;
+  --st-pendiente:#99a3bf; --st-proceso:#7d97ff; --st-espera:#f0b13d; --st-hecho:#4cc584;
+  --danger:#ff6b75; --danger-soft:#3a1a22; --warn-soft:#352a12; --ok-soft:#12301f; --blue-soft:#1a2550;
+  --head-fg:#ffffff; --head-muted:#8f9cc0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --navy:#061230; --blue:#5b7cff; --bg:#0b1020; --surface:#141b2e; --fg:#e6eaf5; --muted:#99a3bf; --line:#263050; --soft:#1b2440;
+  --st-pendiente:#99a3bf; --st-proceso:#7d97ff; --st-espera:#f0b13d; --st-hecho:#4cc584;
+  --danger:#ff6b75; --danger-soft:#3a1a22; --warn-soft:#352a12; --ok-soft:#12301f; --blue-soft:#1a2550;
+  --head-fg:#ffffff; --head-muted:#8f9cc0; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-ui);font-size:15px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--navy)}
+.wrap{max-width:1360px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+
+/* Encabezado */
+header.top{background:var(--navy);color:var(--head-fg)}
+header.top .wrap{padding-block:22px 20px;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between}
+.brand .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--head-muted);font-weight:600}
+.brand h1{margin:4px 0 2px;font-size:26px;font-weight:800;letter-spacing:-.01em;text-wrap:balance}
+.brand p{margin:0;color:var(--head-muted);font-size:13px}
+.who{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.role{font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.1);color:var(--head-fg)}
+.role b{font-weight:800}
+.btn{border:0;border-radius:8px;padding:11px 16px;font-weight:700;font-size:14px;min-height:44px}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-ghost{background:var(--soft);color:var(--fg)}
+.btn-danger{background:var(--danger-soft);color:var(--danger)}
+.btn:disabled{opacity:.5;cursor:default}
+
+/* Indicadores */
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:-1px;padding-block:18px 6px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;text-align:left;display:flex;flex-direction:column;gap:2px;min-height:44px}
+.stat .n{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat .l{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.stat.on{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset}
+.stat.alert .n{color:var(--danger)}
+.stat.wait .n{color:var(--st-espera)}
+.stat.done .n{color:var(--st-hecho)}
+
+/* Filtros */
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-block:12px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;min-height:40px}
+.chip.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.search{flex:1 1 220px;min-width:0;display:flex}
+.search input{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:9px 16px;min-height:40px}
+.active-filter{font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:center}
+.linkbtn{background:none;border:0;color:var(--blue);font-weight:700;padding:4px}
+
+/* Tablero */
+.board{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;padding-block:6px 28px;align-items:start}
+.col{background:var(--soft);border-radius:12px;padding:10px;min-width:0}
+.col h2{margin:4px 6px 10px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.col h2 .dot{width:9px;height:9px;border-radius:50%}
+.col h2 .cnt{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
+.cards{display:flex;flex-direction:column;gap:8px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 13px;text-align:left;width:100%;display:flex;flex-direction:column;gap:7px}
+.card:hover{border-color:var(--muted)}
+.card .t{font-weight:700;font-size:14.5px;line-height:1.3;overflow-wrap:anywhere}
+.card .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
+.tag{font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;background:var(--soft);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.tag.urg{background:var(--danger-soft);color:var(--danger)}
+.due{font-weight:700;font-variant-numeric:tabular-nums}
+.due.late{color:var(--danger)}
+.due.soon{color:var(--st-espera)}
+.pay{font-size:12px;font-weight:700;color:var(--st-espera);background:var(--warn-soft);border-radius:6px;padding:5px 8px;font-variant-numeric:tabular-nums}
+.empty-col{font-size:13px;color:var(--muted);padding:14px 8px;text-align:center}
+.more{margin-top:4px}
+
+/* Estado vacío / aviso */
+.notice{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:28px 22px;margin-block:10px 28px;max-width:640px}
+.notice h3{margin:0 0 6px;font-size:18px}
+.notice p{margin:0 0 6px;color:var(--muted)}
+
+/* Guía */
+details.guide{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-bottom:32px}
+details.guide summary{font-weight:700;cursor:pointer;min-height:28px}
+details.guide ol{margin:10px 0 0;padding-left:20px;color:var(--muted);max-width:70ch}
+details.guide li{margin-bottom:6px}
+details.guide li b{color:var(--fg)}
+
+/* Panel de detalle */
+dialog{border:0;padding:0;border-radius:14px;background:var(--surface);color:var(--fg);width:min(720px,calc(100vw - 24px));max-height:calc(100dvh - 24px)}
+dialog::backdrop{background:rgba(5,10,25,.55)}
+.dlg{display:flex;flex-direction:column;max-height:calc(100dvh - 24px)}
+.dlg-head{padding:18px 20px 12px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:flex-start}
+.dlg-head h3{margin:4px 0 0;font-size:20px;line-height:1.25;overflow-wrap:anywhere;text-wrap:balance}
+.dlg-head .x{margin-left:auto;background:var(--soft);border:0;border-radius:8px;min-width:44px;min-height:44px;font-size:20px;line-height:1}
+.dlg-body{padding:16px 20px;overflow:auto;display:flex;flex-direction:column;gap:18px}
+.dlg-foot{padding:12px 20px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.seg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.seg button{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 6px;font-size:12.5px;font-weight:700;min-height:44px}
+.seg button.on{color:#fff;border-color:transparent}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.meta div{background:var(--soft);border-radius:8px;padding:9px 12px}
+.meta span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
+.meta strong{font-variant-numeric:tabular-nums}
+.sec h4{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.sec h4 .sp{margin-left:auto}
+.desc{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+.paybox{background:var(--warn-soft);border-radius:10px;padding:12px 14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px}
+.paybox span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
+.paybox strong{font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.mono{font-family:var(--f-mono);font-size:13px}
+.files{display:flex;flex-direction:column;gap:6px}
+.file{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+.file img{width:44px;height:44px;object-fit:cover;border-radius:6px;flex:none}
+.file .ic{width:44px;height:44px;border-radius:6px;background:var(--soft);display:grid;place-items:center;font-size:11px;font-weight:800;color:var(--muted);flex:none}
+.file a{color:var(--fg);font-weight:600;text-decoration:none;overflow-wrap:anywhere;min-width:0;flex:1}
+.file a:hover{text-decoration:underline}
+.file small{color:var(--muted);display:block;font-weight:500}
+.file .rm{background:none;border:0;color:var(--danger);font-weight:700;min-height:36px}
+.nofiles{font-size:13px;color:var(--muted)}
+.upl{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--blue);background:var(--blue-soft);border-radius:8px;padding:7px 12px;cursor:pointer;min-height:36px}
+.upl input{display:none}
+.log{display:flex;flex-direction:column;gap:8px}
+.note{border-left:3px solid var(--line);padding:2px 0 2px 10px}
+.note.b{border-color:var(--blue)}
+.note.d{border-color:var(--st-hecho)}
+.note.s{border-color:var(--line)}
+.note .h{font-size:12px;color:var(--muted);font-weight:600}
+.note p{margin:2px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.note.s p{color:var(--muted);font-size:13px}
+.addnote{display:flex;flex-direction:column;gap:8px}
+/* Campos de captura: todos con la misma altura, borde y tipografía */
+.dlg input:not([type=file]),.dlg select,.dlg textarea{display:block;width:100%;min-width:0;box-sizing:border-box;margin:0;height:48px;padding:0 14px;border:1px solid var(--line);border-radius:8px;background-color:var(--surface);color:var(--fg);font-family:var(--f-ui);font-size:15px;font-weight:500;line-height:1.2;-webkit-appearance:none;appearance:none;box-shadow:none}
+.dlg textarea{height:auto;min-height:104px;padding:12px 14px;line-height:1.45;resize:vertical}
+.dlg select{padding-right:40px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%238a93ab' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 15px center;background-size:12px 8px;cursor:pointer}
+.dlg input::placeholder,.dlg textarea::placeholder{color:var(--muted);opacity:.75;font-weight:500}
+.dlg input[type=date]::-webkit-date-and-time-value{text-align:left}
+.dlg input:focus,.dlg select:focus,.dlg textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
+.dlg .form .btn,.dlg .inline .btn{height:48px;min-height:48px}
+.dlg .inline select{flex:1 1 200px;width:auto}
+.form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.form label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;min-width:0}
+.form .full{grid-column:1/-1}
+.form fieldset{grid-column:1/-1;border:1px solid var(--line);border-radius:10px;padding:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0}
+.form legend{font-size:12px;font-weight:800;padding:0 6px;color:var(--st-espera);text-transform:uppercase;letter-spacing:.05em}
+.err{color:var(--danger);font-size:13px;font-weight:600}
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;font-weight:600;color:var(--danger)}
+
+.btn-head{background:rgba(255,255,255,.12);color:var(--head-fg)}
+.pfilter{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;min-height:40px;width:auto;font-weight:600;font-size:13px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:32px 26px;margin-block:40px;max-width:560px;margin-inline:auto;display:flex;flex-direction:column;gap:12px}
+.panel h2{margin:0;font-size:22px;text-wrap:balance}
+.panel p{margin:0;color:var(--muted)}
+.panel .mono{color:var(--fg)}
+.members{display:flex;flex-direction:column;gap:8px}
+.member{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.member .mh{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.member .mh strong{font-size:15px;overflow-wrap:anywhere}
+.member .mh .sp{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.member small{color:var(--muted);overflow-wrap:anywhere}
+.pill{font-size:11px;font-weight:800;padding:3px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.05em}
+.pill.on{background:var(--ok-soft);color:var(--st-hecho)}
+.pill.off{background:var(--soft);color:var(--muted)}
+.btn-sm{min-height:36px;padding:7px 12px;font-size:13px}
+.hint{background:var(--blue-soft);border-radius:10px;padding:12px 14px;font-size:13px}
+.hint b{color:var(--fg)}
+.inline{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.inline select{width:auto;flex:1 1 180px}
+.panel form{display:flex;flex-direction:column;gap:12px;width:100%}
+.panel label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.panel input{display:block;width:100%;box-sizing:border-box;margin:0;height:48px;padding:0 14px;border:1px solid var(--line);border-radius:8px;background-color:var(--surface);color:var(--fg);font-family:var(--f-ui);font-size:15px;font-weight:500;-webkit-appearance:none;appearance:none;box-shadow:none}
+.panel input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
+.panel .btn{height:48px;min-height:48px}
+.panel .acts{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:600;font-size:14px;z-index:50;max-width:calc(100vw - 32px)}
+
+@media (max-width:1000px){.board{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){
+  .board,.stats{grid-template-columns:minmax(0,1fr)}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .form,.form fieldset{grid-template-columns:minmax(0,1fr)}
+  .seg{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .brand h1{font-size:22px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+
+.brand{display:flex;gap:16px;align-items:center}
+.brand img{width:72px;height:auto;flex:none}
+.people{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-block:14px 2px}
+.people .lbl{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.pchip{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 14px;min-height:44px;text-align:left;display:flex;flex-direction:column;gap:1px}
+.pchip b{font-size:13.5px}
+.pchip small{font-size:11.5px;color:var(--muted);font-weight:600}
+.pchip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.pchip.on small{color:var(--head-muted)}
+.badge{display:inline-grid;place-items:center;min-width:20px;height:20px;border-radius:999px;background:var(--danger);color:#fff;font-size:11px;font-weight:800;padding:0 6px;margin-left:6px}
+.lockbox{display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+
+</style>
+</head>
+<body>
+<style>
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh}
+img{max-width:100%}
+.panel .row2{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
+.check{flex-direction:row!important;align-items:center;gap:8px!important;text-transform:none!important;letter-spacing:0!important;font-size:13px!important;font-weight:600!important;color:var(--fg)!important}
+.check input{width:18px!important;height:18px!important;padding:0!important;-webkit-appearance:checkbox!important;appearance:auto!important}
+.pwshow{font-family:var(--f-mono);font-size:14px}
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <img src="assets/logo-todo-blanco.png" alt="Iron One Capital" width="72" height="70">
+      <div>
+        <div class="eyebrow">Iron One Capital · Bernardo San Pedro</div>
+        <h1>Mesa</h1>
+        <p>Actividades del equipo, cada quien con su propia lista</p>
+      </div>
+    </div>
+    <div class="who">
+      <span class="role" id="role">Conectando…</span>
+      <button class="btn btn-primary" id="btnNew" hidden>+ Nueva actividad</button>
+      <button class="btn btn-head" id="btnTeam" hidden>Equipo</button>
+      <button class="btn btn-head" id="btnPwd" hidden>Mi contraseña</button>
+      <button class="btn btn-head" id="btnOut" hidden>Cerrar sesión</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap" id="gate"></main>
+<main class="wrap" id="app" hidden>
+  <div class="people" id="people" hidden></div>
+  <section class="stats" id="stats" aria-label="Resumen"></section>
+  <div class="filters" id="filters"></div>
+  <div id="notice"></div>
+  <section class="board" id="board" aria-label="Tablero de actividades"></section>
+
+  <details class="guide">
+    <summary>Cómo se trabaja en esta mesa</summary>
+    <ol>
+      <li><b>Bernardo asigna</b> cada actividad a un responsable, con fecha límite. Los documentos necesarios vienen adjuntos dentro de la actividad.</li>
+      <li><b>Cada quien ve solo sus propias actividades.</b> Nadie del equipo ve las de los demás. Bernardo ve todas.</li>
+      <li><b>Cualquier miembro puede dar de alta sus propias actividades</b> con el botón "+ Nueva actividad".</li>
+      <li><b>Al empezar, se mueve a "En proceso"</b> y los avances se anotan en la bitácora.</li>
+      <li><b>Si falta un pago, una firma o una decisión de Bernardo</b>, se pasa a "Pendiente actividad del CEO". Si es un pago, se capturan beneficiario, monto y referencia. El equipo no paga nada.</li>
+      <li><b>Para cerrar una actividad hay que subir el comprobante</b>, acuse o foto del trámite terminado.</li>
+      <li><b>Las actividades recurrentes</b> (luz, agua, predial, reportes periódicos) se crean solas para el siguiente periodo al cerrarse.</li>
+      <li><b>Por seguridad</b>, la sesión se cierra al cerrar el navegador o tras 60 minutos sin actividad.</li>
+    </ol>
+  </details>
+</main>
+
+<dialog id="dlg"><div class="dlg" id="dlgInner"></div></dialog>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+const SB_URL='https://fdmppptsixxjjzxgzfdp.supabase.co',SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkbXBwcHRzaXh4amp6eGd6ZmRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMzNzU5NzQsImV4cCI6MjEwODk1MTk3NH0.IJDzp-gLmvbBFQCZXJXSsRS2HYy9FLN04315RSq_vqg';
+const ST=[
+  {k:'pendiente',n:'Asignado',c:'--st-pendiente'},
+  {k:'proceso',n:'En proceso',c:'--st-proceso'},
+  {k:'espera',n:'Pendiente actividad del CEO',c:'--st-espera'},
+  {k:'hecho',n:'Terminado',c:'--st-hecho'}];
+const CATS=['Personal','Empresas','Cumplimiento','Jurídico','Comercial','Supervisión'];
+const ROLE_CAT={'Oficial de Cumplimiento':'Cumplimiento','Jurídico':'Jurídico','Coordinación Comercial':'Comercial','Supervisión de Obra':'Supervisión'};
+const ROLES=['Asistente','Oficial de Cumplimiento','Jurídico','Coordinación Comercial','Supervisión de Obra','Socio'];
+const REC={'':'No se repite',mensual:'Cada mes',bimestral:'Cada 2 meses',anual:'Cada año'};
+const MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const IDLE_MIN=60;
+
+let sb=null,me=null,isAdmin=false,screen='cargando',loginMsg='';
+let team=[],tasks=[],tasksLoaded=false,chan=null,reloadT=null;
+let F={cat:'Todos',q:'',stat:null,persona:''};
+let openId=null,mode=null,showAllDone=false,busy=false,bajaId=null,pwdId=null,lastAct=Date.now();
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nowISO=()=>new Date().toISOString();
+const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const parseD=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const fmtD=s=>{if(!s)return'Sin fecha';const d=parseD(s);return d.getDate()+' '+MES[d.getMonth()]+' '+d.getFullYear()};
+const fmtTS=iso=>{if(!iso)return'';const d=new Date(iso);return d.getDate()+' '+MES[d.getMonth()]+' '+d.getFullYear()+', '+d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'})};
+const daysTo=s=>s?Math.round((parseD(s)-parseD(todayStr()))/864e5):null;
+const mxn=n=>(n==null||n==='')?'':'$'+Number(n).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2})+' MXN';
+const addPeriod=(s,rec)=>{const d=parseD(s||todayStr());const m={mensual:1,bimestral:2,anual:12}[rec]||0;const day=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+m);const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(day,last));return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const stName=k=>(ST.find(s=>s.k===k)||ST[0]).n;
+function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,3200)}
+function genPwd(){const a='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';const r=crypto.getRandomValues(new Uint32Array(10));return Array.from(r,x=>a[x%a.length]).join('')}
+
+/* ---------- Personas ---------- */
+const memberById=id=>team.find(m=>m.id===id);
+const staff=()=>team.filter(m=>m.rol!=='Administrador');
+const activeStaff=()=>staff().filter(m=>m.activo);
+const memberName=id=>{if(me&&id===me.id)return isAdmin?'Bernardo San Pedro (tú)':me.nombre;return(memberById(id)||{}).nombre||'—'};
+const authorName=n=>n.autorNombre||(n.autor==='sistema'?'Sistema':'—');
+const personaOk=t=>!isAdmin||F.persona===''||(F.persona==='__yo'?t.responsable===me.id:t.responsable===F.persona);
+const openOf=list=>list.filter(t=>t.estatus!=='hecho').length;
+
+/* ---------- Datos ---------- */
+const fromRow=r=>({id:r.id,titulo:r.titulo,categoria:r.categoria,prioridad:r.prioridad,fechaLimite:r.fecha_limite||'',recurrencia:r.recurrencia||'',detalle:r.detalle||'',estatus:r.estatus,responsable:r.responsable,creada:r.creada,creadaPor:r.creada_por,terminadaEn:r.terminada_en||'',siguienteCreada:r.siguiente_creada,pago:r.pago||{},documentos:r.documentos||[],evidencias:r.evidencias||[],notas:r.notas||[]});
+const cur=()=>tasks.find(t=>t.id===openId);
+const sysNote=texto=>({autor:'sistema',autorNombre:'Sistema',texto:(isAdmin?'Bernardo':me.nombre)+': '+texto,fecha:nowISO()});
+async function upd(id,patch){const{error}=await sb.from('tareas').update(patch).eq('id',id);if(error)throw error}
+async function guard(fn){if(busy)return;busy=true;try{await fn()}catch(e){console.error(e);toast(e&&e.message&&/^[A-ZÁÉÍÓÚÑ¿]/.test(e.message)&&!/JWT|fetch|violates|Failed/.test(e.message)?e.message:'No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.')}finally{busy=false}}
+async function reload(){
+  const[t,m]=await Promise.all([sb.from('tareas').select('*').order('creada'),sb.from('miembros').select('*').order('nombre')]);
+  if(t.error||m.error){console.error(t.error||m.error);return}
+  tasks=t.data.map(fromRow);team=m.data;tasksLoaded=true;
+  const yo=team.find(x=>x.id===me.id);
+  if(yo&&!yo.activo){await logout('Tu acceso fue dado de baja.');return}
+  render();refreshDlg();
+}
+function scheduleReload(){clearTimeout(reloadT);reloadT=setTimeout(reload,350)}
+function subscribe(){
+  if(chan)return;
+  chan=sb.channel('mesa').on('postgres_changes',{event:'*',schema:'public',table:'tareas'},scheduleReload).on('postgres_changes',{event:'*',schema:'public',table:'miembros'},scheduleReload).subscribe();
+}
+async function adminFn(body){
+  const{data,error}=await sb.functions.invoke('admin-usuarios',{body});
+  if(error){let msg='No se pudo completar.';try{const j=await error.context.json();if(j&&j.error)msg=j.error}catch{}throw new Error(msg)}
+  return data;
+}
+
+/* ---------- Sesión ---------- */
+async function boot(){
+  if(!window.supabase){screen='error';render();return}
+  sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{storage:window.sessionStorage,persistSession:true,autoRefreshToken:true}});
+  const{data:{session}}=await sb.auth.getSession();
+  if(!session){screen='login';render();return}
+  await loadMe();
+}
+async function loadMe(){
+  const{data:{user}}=await sb.auth.getUser();
+  if(!user){screen='login';render();return}
+  const{data:m}=await sb.from('miembros').select('*').eq('id',user.id).maybeSingle();
+  if(!m||!m.activo){await logout(m?'Tu acceso fue dado de baja. Comunícate con Bernardo.':'Tu usuario no está registrado en la mesa.');return}
+  me=m;isAdmin=m.rol==='Administrador';
+  if(m.debe_cambiar){screen='forzar';render();return}
+  screen='app';render();await reload();subscribe();
+}
+async function logout(msg){
+  if(chan){try{await sb.removeChannel(chan)}catch{}chan=null}
+  try{await sb.auth.signOut()}catch{}
+  me=null;isAdmin=false;team=[];tasks=[];tasksLoaded=false;loginMsg=msg||'';
+  if($('#dlg').open)$('#dlg').close();
+  screen='login';render();
+}
+
+/* ---------- Pantallas ---------- */
+function render(){
+  const live=screen==='app';
+  $('#role').innerHTML=live?(isAdmin?'<b>Bernardo</b> · Administrador':'<b>'+esc(me.nombre)+'</b> · '+esc(me.rol)):screen==='cargando'?'Conectando…':'Acceso privado';
+  $('#btnNew').hidden=!live;$('#btnTeam').hidden=!(live&&isAdmin);$('#btnPwd').hidden=!live;$('#btnOut').hidden=!live&&screen!=='forzar'&&screen!=='cambiar';
+  $('#app').hidden=!live;$('#gate').hidden=live;
+  if(!live){renderGate();return}
+  $('#gate').innerHTML='';$('#gate').dataset.sig='';
+  renderPeople();
+  const sd=statDefs();
+  $('#stats').innerHTML=sd.map(s=>`<button class="stat ${s.cls} ${F.stat===s.k?'on':''}" data-stat="${s.k}"><span class="n">${s.n}</span><span class="l">${esc(s.l)}</span></button>`).join('');
+  if(!$('#q')){
+    $('#filters').innerHTML=`<div id="chips" style="display:flex;flex-wrap:wrap;gap:8px"></div><div class="search"><input id="q" type="text" placeholder="Buscar actividad…" aria-label="Buscar"></div><span id="af"></span>`;
+    $('#q').addEventListener('input',e=>{F.q=e.target.value;renderBoard()});
+  }
+  $('#chips').innerHTML=['Todos',...CATS].map(c=>`<button class="chip ${F.cat===c?'on':''}" data-cat="${c}">${c}</button>`).join('');
+  $('#af').innerHTML=F.stat?`<span class="active-filter">Filtro: ${esc(sd.find(s=>s.k===F.stat).l)} <button class="linkbtn" data-clear>Quitar</button></span>`:'';
+  renderBoard();
+}
+
+function renderGate(){
+  const g=$('#gate');
+  const sig=screen+'|'+loginMsg;
+  if(g.dataset.sig===sig&&g.innerHTML)return;
+  g.dataset.sig=sig;
+  const head=`<span class="tag">Mesa · Iron One Capital</span>`;
+  if(screen==='cargando'){g.innerHTML=`<div class="panel">${head}<p>Conectando…</p></div>`;return}
+  if(screen==='error'){g.innerHTML=`<div class="panel">${head}<h2>No se pudo conectar</h2><p>Revisa tu conexión a internet y vuelve a cargar la página.</p></div>`;return}
+  if(screen==='login'){g.innerHTML=`<div class="panel lockbox">${head}<h2>Entrar a la mesa</h2><p>Escribe tu correo y tu contraseña.</p>${loginMsg?`<p class="err">${esc(loginMsg)}</p>`:''}
+    <form id="loginFrm" novalidate><label>Correo electrónico<input id="l_correo" type="email" autocomplete="username" inputmode="email"></label><label>Contraseña<input id="l_clave" type="password" autocomplete="current-password"></label><div class="err" id="gErr"></div><div class="acts"><button class="btn btn-primary" type="submit">Entrar</button></div></form>
+    <p style="font-size:13px">¿Olvidaste tu contraseña? Pídele a Bernardo que te asigne una nueva.</p></div>`;return}
+  if(screen==='forzar'){g.innerHTML=`<div class="panel lockbox">${head}<h2>Crea tu contraseña</h2><p>Hola, ${esc(me.nombre)}. Entraste con una contraseña temporal. Crea ahora tu propia contraseña; desde hoy entrarás con <span class="mono">${esc(me.correo)}</span> y la contraseña que elijas.</p>
+    <form id="newPwdFrm" novalidate><label>Contraseña nueva (mínimo 8 caracteres)<input id="n_clave" type="password" autocomplete="new-password"></label><label>Confirma la contraseña<input id="n_clave2" type="password" autocomplete="new-password"></label><div class="err" id="gErr"></div><div class="acts"><button class="btn btn-primary" type="submit">Guardar y entrar</button><button class="btn btn-ghost" type="button" data-logout>Salir</button></div></form></div>`;return}
+  if(screen==='cambiar'){g.innerHTML=`<div class="panel lockbox">${head}<h2>Cambiar mi contraseña</h2>
+    <form id="chgPwdFrm" novalidate><label>Contraseña actual<input id="c_actual" type="password" autocomplete="current-password"></label><label>Contraseña nueva (mínimo 8 caracteres)<input id="n_clave" type="password" autocomplete="new-password"></label><label>Confirma la contraseña nueva<input id="n_clave2" type="password" autocomplete="new-password"></label><div class="err" id="gErr"></div><div class="acts"><button class="btn btn-primary" type="submit">Guardar contraseña</button><button class="btn btn-ghost" type="button" data-backapp>Cancelar</button></div></form></div>`;return}
+}
+const gErr=m=>{const e=$('#gErr');if(e)e.textContent=m};
+
+function statDefs(){
+  const base=tasks.filter(personaOk);
+  return[
+    {k:'late',l:'Vencidos',cls:'alert',f:t=>t.estatus!=='hecho'&&t.fechaLimite&&daysTo(t.fechaLimite)<0},
+    {k:'week',l:'Vencen en 7 días',cls:'',f:t=>t.estatus!=='hecho'&&t.fechaLimite&&daysTo(t.fechaLimite)>=0&&daysTo(t.fechaLimite)<=7},
+    {k:'wait',l:isAdmin?'Te toca a ti':'Pendiente actividad del CEO',cls:'wait',f:t=>t.estatus==='espera'},
+    {k:'done',l:'Terminados este mes',cls:'done',f:t=>t.estatus==='hecho'&&inMonth(t.terminadaEn)}
+  ].map(s=>({...s,n:base.filter(s.f).length}));
+}
+function inMonth(iso){if(!iso)return false;const d=new Date(iso),n=new Date();return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()}
+function visible(){
+  const q=F.q.trim().toLowerCase();
+  const sf=F.stat?statDefs().find(s=>s.k===F.stat).f:null;
+  return tasks.filter(t=>personaOk(t)&&(F.cat==='Todos'||t.categoria===F.cat)&&(!q||(t.titulo+' '+t.detalle).toLowerCase().includes(q))&&(!sf||sf(t)));
+}
+function sortOpen(a,b){const ua=a.prioridad==='Urgente'?0:1,ub=b.prioridad==='Urgente'?0:1;if(ua!==ub)return ua-ub;if(!a.fechaLimite)return 1;if(!b.fechaLimite)return-1;return a.fechaLimite.localeCompare(b.fechaLimite)}
+function dueClass(t){if(t.estatus==='hecho'||!t.fechaLimite)return'';const n=daysTo(t.fechaLimite);return n<0?'late':n<=3?'soon':''}
+function dueLabel(t){if(!t.fechaLimite)return'Sin fecha';const n=daysTo(t.fechaLimite);if(t.estatus==='hecho')return fmtD(t.fechaLimite);if(n<0)return'Vencido · '+fmtD(t.fechaLimite);if(n===0)return'Hoy';if(n===1)return'Mañana';return fmtD(t.fechaLimite)}
+
+function renderPeople(){
+  const box=$('#people');
+  if(!isAdmin||!staff().length){box.hidden=true;return}
+  box.hidden=false;
+  const chips=[{id:'',n:'Todos',s:openOf(tasks)+' abiertos'},{id:'__yo',n:'Mis pendientes',s:openOf(tasks.filter(t=>t.responsable===me.id))+' abiertos'},
+    ...staff().filter(m=>m.activo||tasks.some(t=>t.responsable===m.id)).map(m=>({id:m.id,n:m.nombre,s:m.rol+(m.activo?'':' · baja')+' · '+openOf(tasks.filter(t=>t.responsable===m.id))+' abiertos'}))];
+  box.innerHTML=`<span class="lbl">¿Con quién?</span>`+chips.map(c=>`<button class="pchip ${F.persona===c.id?'on':''}" data-persona="${esc(c.id)}"><b>${esc(c.n)}</b><small>${esc(c.s)}</small></button>`).join('');
+}
+
+function renderBoard(){
+  if(tasksLoaded&&tasks.length===0){$('#notice').innerHTML=`<div class="notice"><h3>Todavía no hay actividades</h3><p>${isAdmin?'Da de alta a tu equipo en <b>Equipo</b> y usa <b>+ Nueva actividad</b> para asignar la primera.':'Cuando Bernardo te asigne algo, lo verás aquí. También puedes dar de alta tus propias actividades con <b>+ Nueva actividad</b>.'}</p></div>`}else $('#notice').innerHTML='';
+  const vis=visible();
+  $('#board').innerHTML=ST.map(s=>{
+    let list=vis.filter(t=>t.estatus===s.k);
+    if(s.k==='hecho')list.sort((a,b)=>(b.terminadaEn||'').localeCompare(a.terminadaEn||''));else list.sort(sortOpen);
+    const total=list.length;
+    if(s.k==='hecho'&&!showAllDone)list=list.slice(0,8);
+    return`<div class="col"><h2><span class="dot" style="background:var(${s.c})"></span>${esc(s.n)}<span class="cnt">${total}</span></h2><div class="cards">${list.map(card).join('')||`<div class="empty-col">${tasksLoaded?'Nada aquí':'Cargando…'}</div>`}${s.k==='hecho'&&total>8?`<button class="linkbtn more" data-moredone>${showAllDone?'Ver menos':'Ver los '+total}</button>`:''}</div></div>`;
+  }).join('');
+}
+
+function card(t){
+  const nd=t.documentos.length,ne=t.evidencias.length,nn=t.notas.filter(n=>n.autor!=='sistema').length;
+  const bits=[];
+  if(nd)bits.push(nd+' doc'+(nd>1?'s':''));
+  if(ne)bits.push(ne+' comprobante'+(ne>1?'s':''));
+  if(nn)bits.push(nn+' nota'+(nn>1?'s':''));
+  if(t.recurrencia)bits.push('↻ '+REC[t.recurrencia].toLowerCase());
+  const p=t.pago||{};
+  return`<button class="card" data-open="${esc(t.id)}">
+    <div class="row"><span class="tag">${esc(t.categoria)}</span>${t.prioridad==='Urgente'?'<span class="tag urg">Urgente</span>':''}</div>
+    <div class="t">${esc(t.titulo)}</div>
+    ${isAdmin?`<div class="row">Responsable: ${t.responsable===me.id?'Bernardo (tú)':esc(memberName(t.responsable))}</div>`:''}
+    ${t.estatus==='espera'&&(p.monto||p.beneficiario)?`<div class="pay">Pagar ${esc(mxn(p.monto))}${p.beneficiario?' · '+esc(p.beneficiario):''}</div>`:''}
+    <div class="row"><span class="due ${dueClass(t)}">${esc(dueLabel(t))}</span>${bits.length?'<span>· '+esc(bits.join(' · '))+'</span>':''}</div>
+  </button>`;
+}
+
+/* ---------- Detalle ---------- */
+function showDlg(){if(!$('#dlg').open)$('#dlg').showModal()}
+function openTask(id){openId=id;mode='view';drawDialog();showDlg()}
+function openNew(){openId=null;mode='new';drawDialog();showDlg()}
+function openTeam(){openId=null;mode='team';bajaId=null;pwdId=null;drawDialog();showDlg()}
+function closeDlg(){$('#dlg').close();openId=null;mode=null}
+
+function fileList(arr,kind){
+  if(!arr.length)return`<div class="nofiles">${kind==='documentos'?'Sin documentos adjuntos.':'Sin comprobantes todavía.'}</div>`;
+  return`<div class="files">${arr.map((f,i)=>{
+    const img=(f.type||'').startsWith('image/');
+    const ext=(f.name.split('.').pop()||'').slice(0,4).toUpperCase();
+    return`<div class="file">${img?`<img data-path="${esc(f.path)}" alt="">`:`<span class="ic">${esc(ext||'DOC')}</span>`}<a data-path="${esc(f.path)}" href="#" target="_blank" rel="noopener">${esc(f.name)}<small>${esc(authorName(f))} · ${esc(fmtTS(f.fecha))}</small></a>${isAdmin?`<button class="rm" data-rmfile="${kind}:${i}" aria-label="Quitar ${esc(f.name)}">Quitar</button>`:''}</div>`}).join('')}</div>`;
+}
+async function signFiles(){
+  const els=[...$('#dlgInner').querySelectorAll('[data-path]')];if(!els.length)return;
+  const paths=[...new Set(els.map(e=>e.dataset.path))];
+  const{data}=await sb.storage.from('archivos').createSignedUrls(paths,3600);
+  const map={};(data||[]).forEach(d=>{if(d.signedUrl)map[d.path]=d.signedUrl});
+  els.forEach(e=>{const u=map[e.dataset.path];if(!u)return;if(e.tagName==='IMG')e.src=u;else e.href=u});
+}
+
+function drawDialog(){
+  const box=$('#dlgInner');
+  if(mode==='team'){box.innerHTML=teamHTML();return}
+  if(mode==='new'||mode==='edit'){box.innerHTML=formHTML(mode==='edit'?cur():null);return}
+  const t=cur();if(!t){closeDlg();return}
+  const p=t.pago||{};
+  const hasPay=p.beneficiario||p.monto||p.referencia;
+  box.innerHTML=`
+  <div class="dlg-head"><div style="min-width:0"><div class="row" style="display:flex;gap:6px;flex-wrap:wrap"><span class="tag">${esc(t.categoria)}</span>${t.prioridad==='Urgente'?'<span class="tag urg">Urgente</span>':''}${t.recurrencia?`<span class="tag">↻ ${esc(REC[t.recurrencia])}</span>`:''}</div><h3>${esc(t.titulo)}</h3></div><button class="x" data-close aria-label="Cerrar">×</button></div>
+  <div class="dlg-body">
+    <div class="sec"><h4>Estatus</h4><div class="seg">${ST.map(s=>`<button data-setst="${s.k}" class="${s.k===t.estatus?'on':''}" style="${s.k===t.estatus?'background:var('+s.c+')':''}">${esc(s.n)}</button>`).join('')}</div><div class="err" id="stErr"></div></div>
+    <div class="meta">
+      ${isAdmin?`<div><span>Responsable</span><strong>${esc(memberName(t.responsable))}</strong></div>`:''}
+      <div><span>Fecha límite</span><strong class="due ${dueClass(t)}">${esc(dueLabel(t))}</strong></div>
+      <div><span>Alta</span><strong>${esc(fmtTS(t.creada))}</strong><br><small style="color:var(--muted)">por ${esc(t.creadaPor===me.id?(isAdmin?'Bernardo':'ti'):(t.creadaPor?memberName(t.creadaPor):'Sistema'))}</small></div>
+      ${t.terminadaEn?`<div><span>Terminado</span><strong>${esc(fmtTS(t.terminadaEn))}</strong></div>`:''}
+    </div>
+    ${t.detalle?`<div class="sec"><h4>Instrucciones</h4><p class="desc">${esc(t.detalle)}</p></div>`:''}
+    ${hasPay?`<div class="sec"><h4>Pago que hace Bernardo</h4><div class="paybox">
+      <div><span>Beneficiario</span><strong>${esc(p.beneficiario||'—')}</strong></div>
+      <div><span>Monto</span><strong>${esc(mxn(p.monto)||'—')}</strong></div>
+      <div><span>Referencia / convenio</span><strong class="mono">${esc(p.referencia||'—')}</strong></div>
+      ${p.fechaPago?`<div><span>Pagar antes de</span><strong>${esc(fmtD(p.fechaPago))}</strong></div>`:''}</div></div>`:''}
+    <div class="sec"><h4>Documentos para el trámite <label class="upl sp">+ Adjuntar<input type="file" multiple data-upl="documentos"></label></h4>${fileList(t.documentos,'documentos')}</div>
+    <div class="sec"><h4>Comprobantes y evidencia <label class="upl sp">+ Subir comprobante<input type="file" multiple accept="image/*,application/pdf" data-upl="evidencias"></label></h4>${fileList(t.evidencias,'evidencias')}</div>
+    <div class="sec"><h4>Bitácora</h4>
+      <div class="log">${t.notas.slice().reverse().map(n=>`<div class="note ${n.autor==='bernardo'?'b':n.autor==='sistema'?'s':'d'}"><div class="h">${esc(authorName(n))} · ${esc(fmtTS(n.fecha))}</div><p>${esc(n.texto)}</p></div>`).join('')||'<div class="nofiles">Sin notas.</div>'}</div>
+      <div class="addnote" style="margin-top:10px"><textarea id="noteTxt" placeholder="Escribe una nota o avance…" aria-label="Nueva nota"></textarea><div><button class="btn btn-ghost" data-addnote>Agregar nota</button></div></div>
+    </div>
+  </div>
+  <div class="dlg-foot" id="foot">${isAdmin?'<button class="btn btn-danger" data-del>Eliminar</button>':''}<button class="btn btn-ghost" data-edit>Editar</button><button class="btn btn-primary" data-close>Listo</button></div>`;
+  signFiles();
+}
+
+function formHTML(t){
+  t=t||{};const p=t.pago||{};
+  const respDef=t.id?t.responsable:(isAdmin&&F.persona&&F.persona!=='__yo'&&(memberById(F.persona)||{}).activo?F.persona:me.id);
+  const catDef=t.categoria||ROLE_CAT[isAdmin?(memberById(respDef)||{}).rol:me.rol]||'Personal';
+  const act=activeStaff();
+  const respField=isAdmin?`<label class="full">Responsable<select id="f_resp"><option value="${esc(me.id)}">Bernardo San Pedro · CEO (yo)</option>${act.map(m=>`<option value="${esc(m.id)}" ${m.id===respDef?'selected':''}>${esc(m.nombre)} · ${esc(m.rol)}</option>`).join('')}${t.responsable&&t.responsable!==me.id&&!act.some(m=>m.id===t.responsable)?`<option value="${esc(t.responsable)}" selected>${esc(memberName(t.responsable))} (baja)</option>`:''}</select></label>`:'';
+  return`<form id="frm" novalidate>
+  <div class="dlg-head"><h3>${t.id?'Editar actividad':'Nueva actividad'}</h3><button type="button" class="x" data-${t.id?'back':'close'} aria-label="Cerrar">×</button></div>
+  <div class="dlg-body"><div class="form">
+    <label class="full">Qué hay que hacer<input id="f_titulo" type="text" value="${esc(t.titulo||'')}" placeholder="Ej. Pagar recibo de luz de la casa" required></label>
+    ${respField}
+    <label>Categoría<select id="f_cat">${CATS.map(c=>`<option ${c===catDef?'selected':''}>${c}</option>`).join('')}</select></label>
+    <label>Prioridad<select id="f_pri">${['Normal','Urgente'].map(c=>`<option ${c===(t.prioridad||'Normal')?'selected':''}>${c}</option>`).join('')}</select></label>
+    <label>Fecha límite<input id="f_fecha" type="date" value="${esc(t.fechaLimite||'')}"></label>
+    <label>Se repite<select id="f_rec">${Object.entries(REC).map(([k,v])=>`<option value="${k}" ${k===(t.recurrencia||'')?'selected':''}>${v}</option>`).join('')}</select></label>
+    <label class="full">Instrucciones<textarea id="f_det" placeholder="Pasos, datos, a quién buscar, qué entregar…">${esc(t.detalle||'')}</textarea></label>
+    <fieldset><legend>Pago que hace Bernardo (opcional)</legend>
+      <label>Beneficiario<input id="f_ben" type="text" value="${esc(p.beneficiario||'')}" placeholder="Ej. CFE"></label>
+      <label>Monto (MXN)<input id="f_monto" type="number" step="0.01" min="0" inputmode="decimal" value="${esc(p.monto??'')}"></label>
+      <label>Referencia / convenio<input id="f_ref" type="text" value="${esc(p.referencia||'')}"></label>
+      <label>Pagar antes de<input id="f_fpago" type="date" value="${esc(p.fechaPago||'')}"></label>
+    </fieldset>
+    <div class="err full" id="frmErr"></div>
+  </div></div>
+  <div class="dlg-foot"><button type="button" class="btn btn-ghost" data-${t.id?'back':'close'}>Cancelar</button><button type="submit" class="btn btn-primary">${t.id?'Guardar cambios':'Dar de alta'}</button></div>
+  </form>`;
+}
+
+/* ---------- Equipo (solo Bernardo) ---------- */
+function teamHTML(){
+  const list=[...staff()].sort((a,b)=>(a.activo===b.activo?0:a.activo?-1:1)||a.nombre.localeCompare(b.nombre));
+  return`<div class="dlg-head"><div><span class="tag">Solo administrador</span><h3>Equipo</h3></div><button class="x" data-close aria-label="Cerrar">×</button></div>
+  <div class="dlg-body">
+   <div class="sec"><h4>Dar de alta</h4>
+    <form id="teamFrm" class="form" novalidate>
+     <label>Nombre completo<input id="t_nombre" type="text" placeholder="Ej. Diego Quintero" autocomplete="off"></label>
+     <label>Correo electrónico<input id="t_correo" type="email" placeholder="correo@ejemplo.com" autocomplete="off" inputmode="email"></label>
+     <label>Rol<select id="t_rol">${ROLES.map(r=>`<option>${r}</option>`).join('')}</select></label>
+     <label>Contraseña temporal<input id="t_pwd" class="pwshow" type="text" autocomplete="off" value="${genPwd()}"></label>
+     <div class="full" style="display:flex;justify-content:flex-end"><button type="submit" class="btn btn-primary">Dar de alta</button></div>
+     <div class="err full" id="teamErr"></div>
+    </form>
+    <div class="hint" style="margin-top:10px"><b>Cómo entra la persona:</b> dale por teléfono o en persona su correo y la contraseña temporal, y la liga <span class="mono">mesa.irononecapital.com</span>. Al entrar por primera vez, la mesa le pide crear su propia contraseña.</div>
+   </div>
+   <div class="sec"><h4>Usuarios <span class="sp">${activeStaff().length} activo${activeStaff().length===1?'':'s'}</span></h4>
+    <div class="members">${list.map(memberHTML).join('')||'<div class="nofiles">Aún no hay usuarios. Da de alta al primero arriba.</div>'}</div>
+   </div>
+  </div>
+  <div class="dlg-foot"><button class="btn btn-primary" data-close>Listo</button></div>`;
+}
+function memberHTML(m){
+  const on=m.activo,n=openOf(tasks.filter(t=>t.responsable===m.id)),conf=bajaId===m.id,pw=pwdId===m.id;
+  const others=activeStaff().filter(x=>x.id!==m.id);
+  return`<div class="member"><div class="mh"><strong>${esc(m.nombre)}</strong><span class="pill ${on?'on':'off'}">${on?'Activo':'Baja'}</span><span class="tag">${esc(m.rol)}</span><span class="sp">${on&&!conf&&!pw?`<button class="btn btn-ghost btn-sm" data-pwd="${esc(m.id)}">Contraseña</button><button class="btn btn-danger btn-sm" data-baja="${esc(m.id)}">Dar de baja</button>`:''}${on?'':`<button class="btn btn-ghost btn-sm" data-reac="${esc(m.id)}">Reactivar</button>`}</span></div>
+  <small><span class="mono">${esc(m.correo)}</span> · Alta ${esc(fmtTS(m.alta))}${!on&&m.baja?' · Baja '+esc(fmtTS(m.baja)):''} · ${m.debe_cambiar?'Aún no crea su contraseña':'Ya creó su contraseña'} · ${n} pendiente${n===1?'':'s'} abierto${n===1?'':'s'}</small>
+  ${conf?`<div class="hint"><b>¿Dar de baja a ${esc(m.nombre)}?</b> Pierde el acceso en ese momento y su historial se conserva.${n?`<div class="inline" style="margin-top:8px"><select id="reasig" aria-label="Qué hacer con sus pendientes abiertos"><option value="">Pasar sus ${n} pendiente${n===1?'':'s'} abierto${n===1?'':'s'} a mí (Bernardo)</option>${others.map(x=>`<option value="${esc(x.id)}">Reasignarlos a ${esc(x.nombre)}</option>`).join('')}</select></div>`:''}<div class="inline" style="margin-top:10px"><button class="btn btn-ghost btn-sm" data-cancbaja>Cancelar</button><button class="btn btn-danger btn-sm" data-bajayes="${esc(m.id)}">Sí, dar de baja</button></div></div>`:''}
+  ${pw?`<div class="hint"><b>Contraseña de ${esc(m.nombre)}</b><div style="margin-top:4px">Entrará con <span class="mono">${esc(m.correo)}</span> y esta contraseña.</div><div class="form" style="margin-top:10px"><label class="full">Contraseña nueva<input id="p_nueva" class="pwshow" type="text" autocomplete="off" value="${genPwd()}"></label><label class="check full"><input id="p_temp" type="checkbox" checked> Pedirle que cree la suya al entrar</label></div><div class="err" id="pErr"></div><div class="inline" style="margin-top:10px"><button class="btn btn-ghost btn-sm" data-cancpwd>Cancelar</button><button class="btn btn-primary btn-sm" data-savepwd="${esc(m.id)}">Guardar contraseña</button></div></div>`:''}
+  </div>`;
+}
+
+/* ---------- Escrituras ---------- */
+async function submitForm(e){
+  e.preventDefault();
+  const titulo=$('#f_titulo').value.trim();
+  if(!titulo){$('#frmErr').textContent='Escribe qué hay que hacer.';$('#f_titulo').focus();return}
+  const monto=$('#f_monto').value;
+  const pago={beneficiario:$('#f_ben').value.trim(),monto:monto===''?null:Number(monto),referencia:$('#f_ref').value.trim(),fechaPago:$('#f_fpago').value||''};
+  const resp=isAdmin?$('#f_resp').value:me.id;
+  const row={titulo,categoria:$('#f_cat').value,prioridad:$('#f_pri').value,fecha_limite:$('#f_fecha').value||null,recurrencia:$('#f_rec').value,detalle:$('#f_det').value.trim(),pago,responsable:resp};
+  await guard(async()=>{
+    if(mode==='edit'){
+      const t=cur();
+      const moved=t.responsable!==resp;
+      await upd(t.id,{...row,notas:[...t.notas,sysNote(moved?'reasignó la actividad a '+(resp===me.id?'Bernardo':memberName(resp)):'editó la actividad')]});
+      mode='view';await reload();drawDialog();toast('Cambios guardados');
+    }else{
+      const{data,error}=await sb.from('tareas').insert({...row,estatus:'pendiente',creada_por:me.id,notas:[]}).select().single();
+      if(error)throw error;
+      openId=data.id;mode='view';await reload();drawDialog();toast('Actividad dada de alta');
+    }
+  });
+}
+
+async function setStatus(k){
+  const t=cur();if(!t||t.estatus===k)return;
+  if(k==='hecho'&&!isAdmin&&!t.evidencias.length){$('#stErr').textContent='Sube el comprobante, acuse o foto antes de marcarla como terminada.';return}
+  await guard(async()=>{
+    await upd(t.id,{estatus:k,terminada_en:k==='hecho'?nowISO():null,notas:[...t.notas,sysNote('cambió el estatus a "'+stName(k)+'"')]});
+    if(k==='hecho'&&t.recurrencia&&!t.siguienteCreada){
+      const fecha=addPeriod(t.fechaLimite,t.recurrencia);
+      const{error}=await sb.from('tareas').insert({titulo:t.titulo,categoria:t.categoria,prioridad:t.prioridad,detalle:t.detalle,recurrencia:t.recurrencia,responsable:t.responsable,
+        fecha_limite:fecha,estatus:'pendiente',creada_por:me.id,documentos:t.documentos,evidencias:[],
+        pago:{beneficiario:t.pago.beneficiario||'',monto:null,referencia:t.pago.referencia||'',fechaPago:''},
+        notas:[{autor:'sistema',autorNombre:'Sistema',texto:'Creada automáticamente al cerrar el periodo anterior.',fecha:nowISO()}]});
+      if(error)throw error;
+      await upd(t.id,{siguiente_creada:true});
+      toast('Terminada. Ya quedó la siguiente: '+fmtD(fecha));
+    }else toast('Estatus: '+stName(k));
+    await reload();
+  });
+}
+
+async function addNote(){
+  const t=cur();const txt=$('#noteTxt').value.trim();if(!txt)return;
+  await guard(async()=>{await upd(t.id,{notas:[...t.notas,{autor:isAdmin?'bernardo':'miembro',autorId:me.id,autorNombre:isAdmin?'Bernardo':me.nombre,texto:txt,fecha:nowISO()}]});$('#noteTxt').value='';await reload();toast('Nota agregada')});
+}
+
+async function upload(kind,files){
+  const t=cur();if(!t||!files.length)return;
+  await guard(async()=>{
+    toast('Subiendo '+files.length+' archivo'+(files.length>1?'s':'')+'…');
+    const added=[];
+    for(const f of files){
+      if(f.size>20*1024*1024){toast(f.name+' pesa más de 20 MB.');continue}
+      const safe=f.name.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^\w.\-]+/g,'_').slice(-80);
+      const path=t.id+'/'+crypto.randomUUID()+'-'+safe;
+      const{error}=await sb.storage.from('archivos').upload(path,f,{contentType:f.type||'application/octet-stream'});
+      if(error){toast('No se pudo subir '+f.name);continue}
+      added.push({path,name:f.name,type:f.type,fecha:nowISO(),autorId:me.id,autorNombre:isAdmin?'Bernardo':me.nombre});
+    }
+    if(!added.length)return;
+    const lt=cur()||t;
+    await upd(t.id,{[kind]:[...lt[kind],...added],notas:[...lt.notas,sysNote((kind==='evidencias'?'subió comprobante: ':'adjuntó: ')+added.map(a=>a.name).join(', '))]});
+    await reload();toast('Archivo listo');
+  });
+}
+
+async function removeFile(spec){
+  const[kind,i]=spec.split(':');const t=cur();const arr=[...t[kind]];const f=arr[+i];if(!f)return;
+  await guard(async()=>{
+    arr.splice(+i,1);
+    await upd(t.id,{[kind]:arr,notas:[...t.notas,sysNote('quitó el archivo '+f.name)]});
+    const stillUsed=tasks.some(x=>x.id!==t.id&&[...x.documentos,...x.evidencias].some(y=>y.path===f.path));
+    if(!stillUsed){try{await sb.storage.from('archivos').remove([f.path])}catch{}}
+    await reload();toast('Archivo quitado');
+  });
+}
+
+async function delTask(){const t=cur();await guard(async()=>{const{error}=await sb.from('tareas').delete().eq('id',t.id);if(error)throw error;closeDlg();await reload();toast('Actividad eliminada')})}
+
+async function addMember(e){
+  e.preventDefault();
+  const nombre=$('#t_nombre').value.trim(),correo=$('#t_correo').value.trim().toLowerCase(),rol=$('#t_rol').value,password=$('#t_pwd').value.trim();
+  const err=$('#teamErr');err.textContent='';
+  if(!nombre){err.textContent='Escribe el nombre.';return}
+  if(!EMAIL_RE.test(correo)){err.textContent='Revisa el correo electrónico.';return}
+  if(password.length<8){err.textContent='La contraseña temporal debe tener al menos 8 caracteres.';return}
+  await guard(async()=>{
+    try{await adminFn({accion:'crear',nombre,correo,rol,password})}catch(x){err.textContent=x.message;return}
+    await reload();drawDialog();
+    toast(nombre+' dado de alta. Dale su correo y la contraseña '+password+'.');
+  });
+}
+async function savePwd(id){
+  const m=memberById(id);const password=$('#p_nueva').value.trim();const temporal=$('#p_temp').checked;const err=$('#pErr');
+  if(password.length<8){err.textContent='La contraseña debe tener al menos 8 caracteres.';return}
+  await guard(async()=>{
+    try{await adminFn({accion:'password',id,password,temporal})}catch(x){err.textContent=x.message;return}
+    pwdId=null;await reload();drawDialog();toast('Contraseña de '+m.nombre+' actualizada: '+password);
+  });
+}
+async function doBaja(id){
+  const m=memberById(id);const reasignar_a=($('#reasig')&&$('#reasig').value)||'';
+  await guard(async()=>{await adminFn({accion:'baja',id,reasignar_a});bajaId=null;await reload();drawDialog();toast(m.nombre+' dado de baja. Ya no puede entrar.')});
+}
+async function reactivate(id){
+  const m=memberById(id);
+  await guard(async()=>{await adminFn({accion:'reactivar',id});await reload();drawDialog();toast(m.nombre+' reactivado.')});
+}
+
+async function doLogin(e){
+  e.preventDefault();
+  const correo=$('#l_correo').value.trim().toLowerCase(),clave=$('#l_clave').value;
+  if(!correo||!clave){gErr('Escribe tu correo y tu contraseña.');return}
+  gErr('Entrando…');
+  const{error}=await sb.auth.signInWithPassword({email:correo,password:clave});
+  if(error){$('#l_clave').value='';gErr(/banned/i.test(error.message)?'Tu acceso fue dado de baja. Comunícate con Bernardo.':/rate|many/i.test(error.message)?'Demasiados intentos. Espera unos minutos.':'Correo o contraseña incorrectos.');return}
+  loginMsg='';lastAct=Date.now();await loadMe();
+}
+async function saveOwnPwd(e,needCurrent){
+  e.preventDefault();
+  const c1=$('#n_clave').value,c2=$('#n_clave2').value;
+  if(c1.length<8){gErr('La contraseña debe tener al menos 8 caracteres.');return}
+  if(c1!==c2){gErr('Las dos contraseñas no coinciden.');return}
+  if(needCurrent){const{error}=await sb.auth.signInWithPassword({email:me.correo,password:$('#c_actual').value});if(error){gErr('La contraseña actual no es correcta.');return}}
+  const{error}=await sb.auth.updateUser({password:c1});
+  if(error){gErr(/different|same/i.test(error.message)?'La contraseña nueva debe ser distinta de la anterior.':'No se pudo guardar la contraseña.');return}
+  await sb.rpc('contrasena_creada');
+  toast('Contraseña guardada');
+  await loadMe();
+}
+
+/* ---------- Eventos ---------- */
+document.addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  const d=b.dataset;
+  if(d.stat!==undefined){F.stat=F.stat===d.stat?null:d.stat;render()}
+  else if(d.clear!==undefined){F.stat=null;render()}
+  else if(d.cat){F.cat=d.cat;render()}
+  else if(d.persona!==undefined){F.persona=d.persona;render()}
+  else if(d.open){openTask(d.open)}
+  else if(d.moredone!==undefined){showAllDone=!showAllDone;renderBoard()}
+  else if(d.close!==undefined){closeDlg()}
+  else if(d.back!==undefined){if(openId){mode='view';drawDialog()}else closeDlg()}
+  else if(d.edit!==undefined){mode='edit';drawDialog()}
+  else if(d.setst){setStatus(d.setst)}
+  else if(d.addnote!==undefined){addNote()}
+  else if(d.rmfile){removeFile(d.rmfile)}
+  else if(d.del!==undefined){$('#foot').innerHTML=`<span class="confirm">¿Eliminar esta actividad para siempre?</span><button class="btn btn-ghost" data-cancdel>No</button><button class="btn btn-danger" data-delyes>Sí, eliminar</button>`}
+  else if(d.cancdel!==undefined){drawDialog()}
+  else if(d.delyes!==undefined){delTask()}
+  else if(d.baja){bajaId=d.baja;pwdId=null;drawDialog()}
+  else if(d.cancbaja!==undefined){bajaId=null;drawDialog()}
+  else if(d.bajayes){doBaja(d.bajayes)}
+  else if(d.reac){reactivate(d.reac)}
+  else if(d.pwd){pwdId=d.pwd;bajaId=null;drawDialog()}
+  else if(d.cancpwd!==undefined){pwdId=null;drawDialog()}
+  else if(d.savepwd){savePwd(d.savepwd)}
+  else if(d.logout!==undefined){logout()}
+  else if(d.backapp!==undefined){screen='app';render()}
+});
+$('#btnNew').addEventListener('click',openNew);
+$('#btnTeam').addEventListener('click',openTeam);
+$('#btnPwd').addEventListener('click',()=>{if($('#dlg').open)closeDlg();screen='cambiar';render()});
+$('#btnOut').addEventListener('click',()=>logout('Sesión cerrada.'));
+document.addEventListener('submit',e=>{const id=e.target.id;
+  if(id==='frm')submitForm(e);else if(id==='teamFrm')addMember(e);else if(id==='loginFrm')doLogin(e);
+  else if(id==='newPwdFrm')saveOwnPwd(e,false);else if(id==='chgPwdFrm')saveOwnPwd(e,true)});
+document.addEventListener('change',e=>{if(e.target.id==='f_resp'&&mode==='new'){const m=memberById(e.target.value);const c=$('#f_cat');if(c)c.value=(m&&ROLE_CAT[m.rol])||'Personal';return}const k=e.target.dataset&&e.target.dataset.upl;if(k){upload(k,[...e.target.files]);e.target.value=''}});
+$('#dlg').addEventListener('close',()=>{openId=null;mode=null;bajaId=null;pwdId=null});
+$('#dlg').addEventListener('click',e=>{if(e.target===$('#dlg'))closeDlg()});
+
+/* Redibuja el panel abierto sin perder lo que se está escribiendo */
+function refreshDlg(){
+  if(!$('#dlg').open||mode==='new'||mode==='edit')return;
+  const vals={};$('#dlgInner').querySelectorAll('input[id],select[id],textarea[id]').forEach(el=>{if(el.type==='checkbox')vals[el.id]=el.checked;else if(el.type!=='file')vals[el.id]=el.value});
+  const focus=document.activeElement&&document.activeElement.id;
+  drawDialog();
+  Object.entries(vals).forEach(([id,v])=>{const el=document.getElementById(id);if(!el)return;if(el.type==='checkbox')el.checked=v;else el.value=v});
+  if(focus){const el=document.getElementById(focus);if(el)el.focus()}
+}
+
+/* Cierre por inactividad */
+['pointerdown','keydown','scroll'].forEach(ev=>document.addEventListener(ev,()=>{lastAct=Date.now()},{passive:true}));
+setInterval(()=>{if(me&&Date.now()-lastAct>IDLE_MIN*60000)logout('Se cerró la sesión por inactividad.')},30000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&screen==='app')scheduleReload()});
+
+render();
+boot().catch(e=>{console.error(e);screen='error';render()});
+</script>
+
+</body>
+</html>

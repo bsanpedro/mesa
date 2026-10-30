@@ -1,9 +1,9 @@
 {
- "name": "Mesa · Iron One Capital",
+ "name": "Mesa Operativa · Iron One Capital",
  "short_name": "Mesa",
  "start_url": "/",
  "display": "standalone",
- "background_color": "#081a3a",
+ "background_color": "#ffffff",
  "theme_color": "#081a3a",
  "icons": [
   {

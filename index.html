@@ -59,12 +59,13 @@ header.top .wrap{padding-block:22px 20px;display:flex;flex-wrap:wrap;gap:16px;al
 .btn:disabled{opacity:.5;cursor:default}
 
 /* Indicadores */
-.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:-1px;padding-block:18px 6px}
+.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-top:-1px;padding-block:18px 6px}
 .stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;text-align:left;display:flex;flex-direction:column;gap:2px;min-height:44px}
 .stat .n{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
 .stat .l{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
 .stat.on{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset}
 .stat.alert .n{color:var(--danger)}
+.stat.soon .n{color:#c2410c}
 .stat.wait .n{color:var(--st-espera)}
 .stat.done .n{color:var(--st-hecho)}
 
@@ -197,10 +198,11 @@ dialog::backdrop{background:rgba(5,10,25,.55)}
 .panel .acts{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:600;font-size:14px;z-index:50;max-width:calc(100vw - 32px)}
 
-@media (max-width:1000px){.board{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:1000px){.board{grid-template-columns:repeat(2,minmax(0,1fr))}.stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:640px){
   .board,.stats{grid-template-columns:minmax(0,1fr)}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stats .stat:last-child{grid-column:1/-1}
   .form,.form fieldset{grid-template-columns:minmax(0,1fr)}
   .seg{grid-template-columns:repeat(2,minmax(0,1fr))}
   .brand h1{font-size:22px}
@@ -426,7 +428,8 @@ function statDefs(){
   const base=tasks.filter(personaOk);
   return[
     {k:'late',l:'Vencidos',cls:'alert',f:t=>t.estatus!=='hecho'&&t.fechaLimite&&daysTo(t.fechaLimite)<0},
-    {k:'week',l:'Vencen en 7 días',cls:'',f:t=>t.estatus!=='hecho'&&t.fechaLimite&&daysTo(t.fechaLimite)>=0&&daysTo(t.fechaLimite)<=7},
+    {k:'soon',l:'Vencen hoy o mañana',cls:'soon',f:t=>t.estatus!=='hecho'&&t.fechaLimite&&daysTo(t.fechaLimite)>=0&&daysTo(t.fechaLimite)<=1},
+    {k:'week',l:'Vencen en los próximos 7 días',cls:'',f:t=>t.estatus!=='hecho'&&t.fechaLimite&&daysTo(t.fechaLimite)>=0&&daysTo(t.fechaLimite)<=7},
     {k:'wait',l:isAdmin?'Te toca a ti':'Pendiente actividad del CEO',cls:'wait',f:t=>t.estatus==='espera'},
     {k:'done',l:'Terminados este mes',cls:'done',f:t=>t.estatus==='hecho'&&inMonth(t.terminadaEn)}
   ].map(s=>({...s,n:base.filter(s.f).length}));

@@ -249,7 +249,7 @@ img{max-width:100%}
       <div>
         <div class="eyebrow">Iron One Capital · Bernardo San Pedro</div>
         <h1>Mesa de Seguimiento Operativo</h1>
-        <p>Actividades del equipo, cada quien con su propia lista</p>
+        <p>Actividades del equipo, organizadas por categoría</p>
       </div>
     </div>
     <div class="who">
@@ -274,7 +274,7 @@ img{max-width:100%}
     <summary>Cómo se trabaja en esta mesa</summary>
     <ol>
       <li><b>Bernardo asigna</b> cada actividad a un responsable, con fecha límite. Los documentos necesarios vienen adjuntos dentro de la actividad.</li>
-      <li><b>Cada quien ve solo sus propias actividades.</b> Nadie del equipo ve las de los demás. Bernardo ve todas.</li>
+      <li><b>Cada quien ve todas las actividades de las categorías que tiene asignadas</b> (por ejemplo, Cumplimiento), sin importar quién sea el responsable, además de las suyas. No ve las de otras categorías. Bernardo ve todas.</li>
       <li><b>Cualquier miembro puede dar de alta sus propias actividades</b> con el botón "+ Nueva actividad".</li>
       <li><b>Al empezar, se mueve a "En proceso"</b> y los avances se anotan en la bitácora.</li>
       <li><b>Si falta un pago, una firma o una decisión de Bernardo</b>, se pasa a "Pendiente actividad del CEO". Si es un pago, se capturan beneficiario, monto y referencia. El equipo no paga nada.</li>
@@ -329,7 +329,8 @@ const staff=()=>team.filter(m=>m.rol!=='Administrador');
 const activeStaff=()=>staff().filter(m=>m.activo);
 const memberName=id=>{if(me&&id===me.id)return isAdmin?'Bernardo San Pedro (tú)':me.nombre;return(memberById(id)||{}).nombre||'—'};
 const authorName=n=>n.autorNombre||(n.autor==='sistema'?'Sistema':'—');
-const personaOk=t=>!isAdmin||F.persona===''||(F.persona==='__yo'?t.responsable===me.id:t.responsable===F.persona);
+const respLabel=t=>t.responsable===me.id?(isAdmin?'Bernardo (tú)':'Tú'):memberName(t.responsable);
+const personaOk=t=>F.persona===''||(F.persona==='__yo'?t.responsable===me.id:t.responsable===F.persona);
 const openOf=list=>list.filter(t=>t.estatus!=='hecho').length;
 /* Categorías que puede usar cada persona (Bernardo: todas) */
 const catsFor=id=>{const m=(!isAdmin&&me&&id===me.id)?me:memberById(id);if(!m||m.rol==='Administrador'||!(m.categorias||[]).length)return CATS;return CATS.filter(c=>m.categorias.includes(c))};
@@ -446,10 +447,11 @@ function dueLabel(t){if(!t.fechaLimite)return'Sin fecha';const n=daysTo(t.fechaL
 
 function renderPeople(){
   const box=$('#people');
-  if(!isAdmin||!staff().length){box.hidden=true;return}
+  const ajenas=!isAdmin&&tasks.some(t=>t.responsable!==me.id);
+  if(isAdmin?!staff().length:!ajenas){box.hidden=true;return}
   box.hidden=false;
-  const chips=[{id:'',n:'Todos',s:openOf(tasks)+' abiertos'},{id:'__yo',n:'Mis pendientes',s:openOf(tasks.filter(t=>t.responsable===me.id))+' abiertos'},
-    ...staff().filter(m=>m.activo||tasks.some(t=>t.responsable===m.id)).map(m=>({id:m.id,n:m.nombre,s:m.rol+(m.activo?'':' · baja')+' · '+openOf(tasks.filter(t=>t.responsable===m.id))+' abiertos'}))];
+  const chips=[{id:'',n:isAdmin?'Todos':'Todas mis categorías',s:openOf(tasks)+' abiertos'},{id:'__yo',n:'Mis pendientes',s:openOf(tasks.filter(t=>t.responsable===me.id))+' abiertos'},
+    ...(isAdmin?staff():[]).filter(m=>m.activo||tasks.some(t=>t.responsable===m.id)).map(m=>({id:m.id,n:m.nombre,s:m.rol+(m.activo?'':' · baja')+' · '+openOf(tasks.filter(t=>t.responsable===m.id))+' abiertos'}))];
   box.innerHTML=`<span class="lbl">¿Con quién?</span>`+chips.map(c=>`<button class="pchip ${F.persona===c.id?'on':''}" data-persona="${esc(c.id)}"><b>${esc(c.n)}</b><small>${esc(c.s)}</small></button>`).join('');
 }
 
@@ -476,7 +478,7 @@ function card(t){
   return`<button class="card" data-open="${esc(t.id)}">
     <div class="row"><span class="tag">${esc(t.categoria)}</span>${t.prioridad==='Urgente'?'<span class="tag urg">Urgente</span>':''}</div>
     <div class="t">${esc(t.titulo)}</div>
-    ${isAdmin?`<div class="row">Responsable: ${t.responsable===me.id?'Bernardo (tú)':esc(memberName(t.responsable))}</div>`:''}
+    <div class="row">Responsable: ${esc(respLabel(t))}</div>
     ${t.estatus==='espera'&&(p.monto||p.beneficiario)?`<div class="pay">Pagar ${esc(mxn(p.monto))}${p.beneficiario?' · '+esc(p.beneficiario):''}</div>`:''}
     <div class="row"><span class="due ${dueClass(t)}">${esc(dueLabel(t))}</span>${bits.length?'<span>· '+esc(bits.join(' · '))+'</span>':''}</div>
   </button>`;
@@ -516,7 +518,7 @@ function drawDialog(){
   <div class="dlg-body">
     <div class="sec"><h4>Estatus</h4><div class="seg">${ST.map(s=>`<button data-setst="${s.k}" class="${s.k===t.estatus?'on':''}" style="${s.k===t.estatus?'background:var('+s.c+')':''}">${esc(s.n)}</button>`).join('')}</div><div class="err" id="stErr"></div></div>
     <div class="meta">
-      ${isAdmin?`<div><span>Responsable</span><strong>${esc(memberName(t.responsable))}</strong></div>`:''}
+      <div><span>Responsable</span><strong>${esc(respLabel(t))}</strong></div>
       <div><span>Fecha límite</span><strong class="due ${dueClass(t)}">${esc(dueLabel(t))}</strong></div>
       <div><span>Alta</span><strong>${esc(fmtTS(t.creada))}</strong><br><small style="color:var(--muted)">por ${esc(t.creadaPor===me.id?(isAdmin?'Bernardo':'ti'):(t.creadaPor?memberName(t.creadaPor):'Sistema'))}</small></div>
       ${t.terminadaEn?`<div><span>Terminado</span><strong>${esc(fmtTS(t.terminadaEn))}</strong></div>`:''}
@@ -610,7 +612,7 @@ async function submitForm(e){
   if(!titulo){$('#frmErr').textContent='Escribe qué hay que hacer.';$('#f_titulo').focus();return}
   const monto=$('#f_monto').value;
   const pago={beneficiario:$('#f_ben').value.trim(),monto:monto===''?null:Number(monto),referencia:$('#f_ref').value.trim(),fechaPago:$('#f_fpago').value||''};
-  const resp=isAdmin?$('#f_resp').value:me.id;
+  const resp=isAdmin?$('#f_resp').value:(mode==='edit'?cur().responsable:me.id);
   const row={titulo,categoria:$('#f_cat').value,prioridad:$('#f_pri').value,fecha_limite:$('#f_fecha').value||null,recurrencia:$('#f_rec').value,detalle:$('#f_det').value.trim(),pago,responsable:resp};
   await guard(async()=>{
     if(mode==='edit'){
